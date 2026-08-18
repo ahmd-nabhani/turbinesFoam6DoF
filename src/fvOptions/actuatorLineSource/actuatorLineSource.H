@@ -50,7 +50,7 @@ namespace fv
 {
 
 /*---------------------------------------------------------------------------*\
-                         Class actuatorLineSource Declaration
+                          Class actuatorLineSource Declaration
 \*---------------------------------------------------------------------------*/
 
 class actuatorLineSource
@@ -120,6 +120,28 @@ protected:
         //- Switch for correcting end effects
         bool endEffectsActive_;
 
+        // Modified by Ahmad 18 August 2026
+        //- Switch for prescribed 6DoF motion
+        bool sixDoFActive_;
+
+        // Modified by Ahmad 18 August 2026
+        //- Directional activation switches
+        bool surgeActive_;
+        bool swayActive_;
+        bool heaveActive_;
+
+        // Modified by Ahmad 18 August 2026
+        //- Motion parameters (Amplitude, Frequency, Phase)
+        scalar surgeAmp_, surgeFreq_, surgePhase_;
+        scalar swayAmp_,  swayFreq_,  swayPhase_;
+        scalar heaveAmp_, heaveFreq_, heavePhase_;
+
+        // Modified by Ahmad 18 August 2026
+        //- Tracked displacement and velocity vectors
+        vector currentDisplacement_;
+        vector currentVelocity_;
+        vector lastDisplacement_;
+
 
     // Protected Member Functions
 
@@ -140,6 +162,10 @@ protected:
 
         //- Execute harmonic pitching for a single time step
         void harmonicPitching();
+
+        // Modified by Ahmad 18 August 2026
+        //- Compute and update prescribed 6DoF translational motion step
+        virtual void updatePrescribed6DoF();
 
 
 public:
