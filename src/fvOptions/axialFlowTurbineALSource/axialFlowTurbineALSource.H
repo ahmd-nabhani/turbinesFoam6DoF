@@ -108,6 +108,10 @@ protected:
         //- End effects model name
         word endEffectsModel_;
 
+        // Modified by Ahmad 18 August 2026
+        // Inherits sixDoFActive_, motion parameters, and updatePrescribed6DoF() 
+        // from actuatorLineSource base class via turbineALSource.
+
 
     // Protected Member Functions
 
