@@ -346,6 +346,8 @@ void Foam::fv::actuatorLineElement::applyForceField
     scalar sphereRadius = chordLength_ + projectionRadius;
     forAll(mesh_.cells(), cellI)
     {
+        // Modified by Ahmad 18 August 2026
+        // Uses updated position_ translated by 6DoF movement
         scalar dis = mag(mesh_.C()[cellI] - position_);
         if (dis <= sphereRadius)
         {
@@ -714,7 +716,8 @@ void Foam::fv::actuatorLineElement::calculateForce
                             / magSqr(spanDirection_);
     inflowVelocity_ -= spanwiseVelocity;
 
-    // Calculate relative velocity and Reynolds number
+    // Modified by Ahmad 18 August 2026
+    // Subtracts total element velocity_ (rotational + prescribed 6DoF velocity)
     relativeVelocity_ = inflowVelocity_ - velocity_;
     Re_ = mag(relativeVelocity_)*chordLength_/nu_;
 
@@ -903,6 +906,8 @@ void Foam::fv::actuatorLineElement::pitch
 
 void Foam::fv::actuatorLineElement::translate(vector translationVector)
 {
+    // Modified by Ahmad 18 August 2026
+    // Translates element position by incremental 6DoF displacement
     position_ += translationVector;
 }
 
@@ -914,6 +919,8 @@ void Foam::fv::actuatorLineElement::setVelocity(vector velocity)
         Info<< "Changing velocity of " << name_ << " from "
             << velocity_ << " to " << velocity << endl << endl;
     }
+    // Modified by Ahmad 18 August 2026
+    // Updates total element structural velocity (rotational + 6DoF velocity)
     velocity_ = velocity;
 }
 
