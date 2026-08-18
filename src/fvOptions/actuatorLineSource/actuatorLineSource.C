@@ -74,6 +74,32 @@ bool Foam::fv::actuatorLineSource::read(const dictionary& dict)
         reducedFreq_ = pitchDict.lookupOrDefault("reducedFreq", 0.0);
         pitchAmplitude_ = pitchDict.lookupOrDefault("amplitude", 0.0);
 
+        // Modified by Ahmad 18 August 2026
+        // Read prescribed 6DoF motion parameters if present
+        dictionary motionDict = coeffs_.subOrEmptyDict("motion");
+        sixDoFActive_ = motionDict.lookupOrDefault("active", false);
+
+        if (sixDoFActive_)
+        {
+            dictionary surgeDict = motionDict.subOrEmptyDict("surge");
+            surgeActive_ = surgeDict.lookupOrDefault("active", false);
+            surgeAmp_    = surgeDict.lookupOrDefault("amplitude", 0.0);
+            surgeFreq_   = surgeDict.lookupOrDefault("frequency", 0.0);
+            surgePhase_  = surgeDict.lookupOrDefault("phase", 0.0);
+
+            dictionary swayDict = motionDict.subOrEmptyDict("sway");
+            swayActive_ = swayDict.lookupOrDefault("active", false);
+            swayAmp_    = swayDict.lookupOrDefault("amplitude", 0.0);
+            swayFreq_   = swayDict.lookupOrDefault("frequency", 0.0);
+            swayPhase_  = swayDict.lookupOrDefault("phase", 0.0);
+
+            dictionary heaveDict = motionDict.subOrEmptyDict("heave");
+            heaveActive_ = heaveDict.lookupOrDefault("active", false);
+            heaveAmp_    = heaveDict.lookupOrDefault("amplitude", 0.0);
+            heaveFreq_   = heaveDict.lookupOrDefault("frequency", 0.0);
+            heavePhase_  = heaveDict.lookupOrDefault("phase", 0.0);
+        }
+
         // Read option for writing forceField
         bool writeForceField = coeffs_.lookupOrDefault
         (
@@ -492,6 +518,47 @@ void Foam::fv::actuatorLineSource::harmonicPitching()
 }
 
 
+// Modified by Ahmad 18 August 2026
+void Foam::fv::actuatorLineSource::updatePrescribed6DoF()
+{
+    if (!sixDoFActive_) return;
+
+    scalar t = mesh_.time().value();
+
+    if (t != lastMotionTime_)
+    {
+        scalar pi = Foam::constant::mathematical::pi;
+
+        // Calculate instantaneous displacement [m]
+        scalar x = surgeActive_ ? surgeAmp_ * sin(2.0 * pi * surgeFreq_ * t + surgePhase_) : 0.0;
+        scalar y = swayActive_  ? swayAmp_  * sin(2.0 * pi * swayFreq_  * t + swayPhase_)  : 0.0;
+        scalar z = heaveActive_ ? heaveAmp_ * sin(2.0 * pi * heaveFreq_ * t + heavePhase_) : 0.0;
+
+        currentDisplacement_ = vector(x, y, z);
+
+        // Calculate instantaneous velocity [m/s]
+        scalar vx = surgeActive_ ? 2.0 * pi * surgeFreq_ * surgeAmp_ * cos(2.0 * pi * surgeFreq_ * t + surgePhase_) : 0.0;
+        scalar vy = swayActive_  ? 2.0 * pi * swayFreq_  * swayAmp_  * cos(2.0 * pi * swayFreq_  * t + swayPhase_)  : 0.0;
+        scalar vz = heaveActive_ ? 2.0 * pi * heaveFreq_ * heaveAmp_ * cos(2.0 * pi * heaveFreq_ * t + heavePhase_) : 0.0;
+
+        currentVelocity_ = vector(vx, vy, vz);
+
+        // Compute incremental displacement relative to previous step
+        vector deltaX = currentDisplacement_ - lastDisplacement_;
+
+        // Physically translate element positions and update total velocity
+        forAll(elements_, i)
+        {
+            elements_[i].translate(deltaX);
+            elements_[i].setVelocity(elements_[i].velocity() + currentVelocity_);
+        }
+
+        lastDisplacement_ = currentDisplacement_;
+        lastMotionTime_   = t;
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::fv::actuatorLineSource::actuatorLineSource
@@ -524,7 +591,18 @@ Foam::fv::actuatorLineSource::actuatorLineSource
     ),
     writePerf_(coeffs_.lookupOrDefault("writePerf", false)),
     lastMotionTime_(mesh.time().value()),
-    endEffectsActive_(false)
+    endEffectsActive_(false),
+    // Modified by Ahmad 18 August 2026
+    sixDoFActive_(false),
+    surgeActive_(false),
+    swayActive_(false),
+    heaveActive_(false),
+    surgeAmp_(0.0), surgeFreq_(0.0), surgePhase_(0.0),
+    swayAmp_(0.0),  swayFreq_(0.0),  swayPhase_(0.0),
+    heaveAmp_(0.0), heaveFreq_(0.0), heavePhase_(0.0),
+    currentDisplacement_(vector::zero),
+    currentVelocity_(vector::zero),
+    lastDisplacement_(vector::zero)
 {
     read(dict_);
     createElements();
@@ -684,6 +762,13 @@ void Foam::fv::actuatorLineSource::addSup
         harmonicPitching();
     }
 
+    // Modified by Ahmad 18 August 2026
+    // If prescribed 6DoF motion is active, update element kinematics
+    if (sixDoFActive_)
+    {
+        updatePrescribed6DoF();
+    }
+
     // Zero out force field
     forceField_ *= dimensionedScalar("zero", forceField_.dimensions(), 0.0);
 
@@ -728,6 +813,12 @@ void Foam::fv::actuatorLineSource::addSup
         harmonicPitching();
     }
 
+    // Modified by Ahmad 18 August 2026
+    if (sixDoFActive_)
+    {
+        updatePrescribed6DoF();
+    }
+
     const volVectorField& U = mesh_.lookupObject<volVectorField>("U");
 
     word fieldName = fieldNames_[fieldI];
@@ -752,6 +843,12 @@ void Foam::fv::actuatorLineSource::addSup
     if (harmonicPitchingActive_)
     {
         harmonicPitching();
+    }
+
+    // Modified by Ahmad 18 August 2026
+    if (sixDoFActive_)
+    {
+        updatePrescribed6DoF();
     }
 
     // Zero out force field
