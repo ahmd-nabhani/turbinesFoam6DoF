@@ -997,6 +997,21 @@ bool Foam::fv::axialFlowTurbineALSource::read(const dictionary& dict)
         endEffectsDict_.lookup("active") >> endEffectsActive_;
         endEffectsDict_.lookup("endEffectsModel") >> endEffectsModel_;
 
+        // Modified by Ahmad 18 August 2026
+        // Propagate motion subdictionary from top-level coeffs to blade/hub subdictionaries
+        if (coeffs_.found("motion"))
+        {
+            dictionary motionDict = coeffs_.subDict("motion");
+            forAll(blades_, i)
+            {
+                blades_[i].read(dict);
+            }
+            if (hasHub_)
+            {
+                hub_->read(dict);
+            }
+        }
+
         if (debug)
         {
             Info<< "Debugging on" << endl;
