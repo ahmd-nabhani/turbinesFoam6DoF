@@ -815,10 +815,11 @@ void Foam::fv::axialFlowTurbineALSource::addSup
     dragCoefficient_ = force_ & freeStreamDirection_
                      / (0.5*frontalArea_*magSqr(freeStreamVelocity_));
 
-    // Modified by Ahmad 18 August 2026: Print overall turbine hub motion readout
+// Modified by Ahmad 18 August 2026: Overall turbine hub motion readout
     if (blades_.size() > 0)
     {
         Info<< "Turbine Hub Displacement [m] : " << blades_[0].currentDisplacement() << endl;
+        Info<< "Turbine Hub Global Pos   [m] : " << (origin_ + blades_[0].currentDisplacement()) << endl;
         Info<< "Turbine Hub Velocity     [m/s]: " << blades_[0].currentVelocity() << endl;
     }
 
